@@ -1,0 +1,11 @@
+{
+  "language": "fr-FR",
+  "region": "FR",
+  "max_wallpapers": 30,
+  "days_back": 45,
+  "providers": ["Netflix", "Amazon Prime Video", "Disney Plus", "Max", "Apple TV Plus", "Canal+", "Paramount Plus"],
+  "width": 3840,
+  "height": 2160,
+  "text_zone": {"x": 180, "y": 110, "w": 1800, "h": 760},
+  "protected_menu_zone": {"y1": 900, "y2": 1650}
+}
