@@ -88,7 +88,7 @@ def main():
 
             # Synopsis français obligatoire
             overview = (it.get('overview') or '').strip()
-            if len(overview) < 80:
+            if len(overview) < 30:
                 continue
 
             # Titre obligatoire
@@ -96,13 +96,6 @@ def main():
             if not title:
                 continue
 
-            # Éviter les contenus trop confidentiels
-            if it.get('popularity', 0) < 5:
-                continue
-
-            # Éviter les contenus avec trop peu de votes
-            if it.get('vote_count', 0) < 10:
-                continue
 
             # Disponibilité en France obligatoire
             try:
@@ -114,24 +107,24 @@ def main():
             if not prov:
                 continue
 
-            # Garder uniquement les plateformes configurées
-            if CFG.get('providers'):
-                wanted = [
-                    p for p in prov
-                    if any(
-                        k.lower() in p.lower()
-                        for k in CFG['providers']
-                    )
-                ]
+if CFG.get('providers'):
+    wanted = [
+        p for p in prov
+        if any(
+            k.lower() in p.lower()
+            for k in CFG['providers']
+        )
+    ]
 
-                if not wanted:
-                    continue
-
-                prov = wanted
-
+    # Si une plateforme souhaitée correspond, on la privilégie.
+    # Sinon on conserve quand même le contenu disponible en France.
+    if wanted:
+        prov = wanted
             chosen.append((it, kind, prov))
 
+   
     # Classer les contenus
+    print(f"Nombre de contenus retenus avant tri : {len(chosen)}")
     chosen.sort(
         key=lambda t: (
             t[0].get('popularity', 0),
