@@ -78,13 +78,65 @@ def make(item,kind,prov):
 
 def main():
     chosen=[]
-    for kind in ('movie','tv'):
-        for it in discover(kind):
-            try: prov=providers(kind,it['id'])
-            except Exception: prov=[]
-            if CFG['providers'] and prov and not any(any(k.lower() in p.lower() for k in CFG['providers']) for p in prov): continue
-            chosen.append((it,kind,prov))
-    chosen.sort(key=lambda t:t[0].get('popularity',0),reverse=True); chosen=chosen[:CFG['max_wallpapers']]
+   for kind in ('movie', 'tv'):
+    for it in discover(kind):
+
+        # 1. Backdrop obligatoire
+        if not it.get('backdrop_path'):
+            continue
+
+        # 2. Synopsis français obligatoire
+        overview = (it.get('overview') or '').strip()
+        if len(overview) < 80:
+            continue
+
+        # 3. Titre français obligatoire
+        title = (it.get('title') or it.get('name') or '').strip()
+        if not title:
+            continue
+
+        # 4. Éviter les contenus trop confidentiels
+        if it.get('popularity', 0) < 5:
+            continue
+
+        # 5. Éviter les contenus avec trop peu de votes
+        if it.get('vote_count', 0) < 10:
+            continue
+
+        # 6. Disponibilité streaming en France OBLIGATOIRE
+        try:
+            prov = providers(kind, it['id'])
+        except Exception as e:
+            print('Erreur providers', it['id'], e)
+            continue
+
+        if not prov:
+            continue
+
+        # 7. Au moins une plateforme configurée doit correspondre
+        if CFG['providers']:
+            wanted = [
+                p for p in prov
+                if any(k.lower() in p.lower() for k in CFG['providers'])
+            ]
+
+            if not wanted:
+                continue
+
+            # On n'affichera que les plateformes qui nous intéressent
+            prov = wanted
+
+        chosen.append((it, kind, prov))
+    chosen.sort(
+    key=lambda t: (
+        t[0].get('popularity', 0),
+        t[0].get('vote_count', 0)
+    ),
+    reverse=True
+)
+
+chosen = chosen[:CFG['max_wallpapers']]
+       
     entries=[]
     base=os.environ.get('PUBLIC_BASE_URL','').rstrip('/')
     for it,kind,prov in chosen:
