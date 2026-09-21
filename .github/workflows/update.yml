@@ -1,37 +1,47 @@
 name: Mise à jour des wallpapers
+
 on:
   workflow_dispatch:
   schedule:
     - cron: '20 5 * * *'
+
 permissions:
   contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -r requirements.txt
-      - name: Générer
+
+      - name: Installer les dépendances
+        run: pip install -r requirements.txt
+
+      - name: Générer les wallpapers
         env:
           TMDB_API_TOKEN: ${{ secrets.TMDB_API_TOKEN }}
           PUBLIC_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/main
         run: python generate.py
+
       - name: Publier
-  run: |
-    git config user.name "projectivy-fr-bot"
-    git config user.email "actions@users.noreply.github.com"
+        run: |
+          git config user.name "projectivy-fr-bot"
+          git config user.email "actions@users.noreply.github.com"
 
-    git add wallpapers wallpapers.json
+          git add wallpapers wallpapers.json
 
-    if git diff --cached --quiet; then
-      echo "Aucune modification à publier"
-      exit 0
-    fi
+          if git diff --cached --quiet; then
+            echo "Aucune modification à publier"
+            exit 0
+          fi
 
-    git commit -m "Mise à jour wallpapers"
-
-    git pull --rebase origin main
-    git push origin main
+          git commit -m "Mise à jour wallpapers"
+          git pull --rebase origin main
+          git push origin main
