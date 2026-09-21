@@ -77,74 +77,109 @@ def make(item,kind,prov):
     return fn,title
 
 def main():
-    chosen=[]
-   for kind in ('movie', 'tv'):
-    for it in discover(kind):
+    chosen = []
 
-        # 1. Backdrop obligatoire
-        if not it.get('backdrop_path'):
-            continue
+    for kind in ('movie', 'tv'):
+        for it in discover(kind):
 
-        # 2. Synopsis français obligatoire
-        overview = (it.get('overview') or '').strip()
-        if len(overview) < 80:
-            continue
-
-        # 3. Titre français obligatoire
-        title = (it.get('title') or it.get('name') or '').strip()
-        if not title:
-            continue
-
-        # 4. Éviter les contenus trop confidentiels
-        if it.get('popularity', 0) < 5:
-            continue
-
-        # 5. Éviter les contenus avec trop peu de votes
-        if it.get('vote_count', 0) < 10:
-            continue
-
-        # 6. Disponibilité streaming en France OBLIGATOIRE
-        try:
-            prov = providers(kind, it['id'])
-        except Exception as e:
-            print('Erreur providers', it['id'], e)
-            continue
-
-        if not prov:
-            continue
-
-        # 7. Au moins une plateforme configurée doit correspondre
-        if CFG['providers']:
-            wanted = [
-                p for p in prov
-                if any(k.lower() in p.lower() for k in CFG['providers'])
-            ]
-
-            if not wanted:
+            # Backdrop obligatoire
+            if not it.get('backdrop_path'):
                 continue
 
-            # On n'affichera que les plateformes qui nous intéressent
-            prov = wanted
+            # Synopsis français obligatoire
+            overview = (it.get('overview') or '').strip()
+            if len(overview) < 80:
+                continue
 
-        chosen.append((it, kind, prov))
+            # Titre obligatoire
+            title = (it.get('title') or it.get('name') or '').strip()
+            if not title:
+                continue
+
+            # Éviter les contenus trop confidentiels
+            if it.get('popularity', 0) < 5:
+                continue
+
+            # Éviter les contenus avec trop peu de votes
+            if it.get('vote_count', 0) < 10:
+                continue
+
+            # Disponibilité en France obligatoire
+            try:
+                prov = providers(kind, it['id'])
+            except Exception as e:
+                print('Erreur providers', it['id'], e)
+                continue
+
+            if not prov:
+                continue
+
+            # Garder uniquement les plateformes configurées
+            if CFG.get('providers'):
+                wanted = [
+                    p for p in prov
+                    if any(
+                        k.lower() in p.lower()
+                        for k in CFG['providers']
+                    )
+                ]
+
+                if not wanted:
+                    continue
+
+                prov = wanted
+
+            chosen.append((it, kind, prov))
+
+    # Classer les contenus
     chosen.sort(
-    key=lambda t: (
-        t[0].get('popularity', 0),
-        t[0].get('vote_count', 0)
-    ),
-    reverse=True
-)
+        key=lambda t: (
+            t[0].get('popularity', 0),
+            t[0].get('vote_count', 0)
+        ),
+        reverse=True
+    )
 
-chosen = chosen[:CFG['max_wallpapers']]
-       
-    entries=[]
-    base=os.environ.get('PUBLIC_BASE_URL','').rstrip('/')
-    for it,kind,prov in chosen:
-        try: result=make(it,kind,prov)
-        except Exception as e: print('skip',it.get('id'),e); continue
-        if not result: continue
-        fn,title=result
-        entries.append({'location':'France','title':title,'author':'TMDB / JustWatch','url_img':f'{base}/wallpapers/{fn}' if base else f'wallpapers/{fn}'})
-    (ROOT/'wallpapers.json').write_text(json.dumps(entries,ensure_ascii=False,indent=2),encoding='utf-8')
-    print(f'{len(entries)} wallpapers générés')
+    chosen = chosen[:CFG['max_wallpapers']]
+
+    os.makedirs('wallpapers', exist_ok=True)
+
+    feed = []
+
+    for it, kind, prov in chosen:
+        try:
+            path = render(it, kind, prov)
+
+            feed.append({
+                'location': 'France',
+                'title': it.get('title') or it.get('name') or '',
+                'author': 'TMDB / JustWatch',
+                'url_img': (
+                    os.environ.get(
+                        'PUBLIC_BASE_URL',
+                        'https://example.invalid'
+                    ).rstrip('/')
+                    + '/'
+                    + path.replace('\\', '/')
+                )
+            })
+
+            print('OK:', it.get('title') or it.get('name'))
+
+        except Exception as e:
+            print(
+                'ERREUR:',
+                it.get('title') or it.get('name'),
+                e
+            )
+
+    with open('wallpapers.json', 'w', encoding='utf-8') as f:
+        json.dump(
+            feed,
+            f,
+            ensure_ascii=False,
+            indent=2
+        )
+
+    print(f'{len(feed)} wallpapers générés')
 if __name__=='__main__': main()
