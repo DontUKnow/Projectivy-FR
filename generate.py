@@ -207,59 +207,77 @@ def make(item, kind, prov):
     )
 
 
+
+
+     # ---------------------------------------------------------
+    # Dégradé sombre derrière le texte
+    # Fondu vers la droite ET vers le bas
     # ---------------------------------------------------------
-# Dégradé horizontal derrière les informations.
-#
-# Gauche : sombre pour rendre le texte lisible.
-# Droite : totalement transparente pour retrouver
-#          progressivement la luminosité du backdrop.
-# ---------------------------------------------------------
 
-overlay = Image.new(
-    "RGBA",
-    (W, H),
-    (0, 0, 0, 0),
-)
-
-od = ImageDraw.Draw(overlay)
-
-# Jusqu'ici, le fond reste bien sombre.
-dark_until = 1050
-
-# À partir de cette position, le backdrop retrouve
-# complètement sa luminosité.
-fade_until = 2350
-
-# Opacité maximale à gauche.
-max_alpha = 205
-
-for x in range(0, fade_until, 8):
-
-    if x <= dark_until:
-        alpha = max_alpha
-
-    else:
-        progress = (
-            (x - dark_until)
-            / (fade_until - dark_until)
-        )
-
-        # Courbe douce plutôt qu'un dégradé linéaire.
-        progress = progress * progress * (3 - 2 * progress)
-
-        alpha = int(
-            max_alpha * (1 - progress)
-        )
-
-    od.rectangle(
-        (x, 0, x + 8, 900),
-        fill=(0, 0, 0, alpha),
+    overlay = Image.new(
+        "RGBA",
+        (W, H),
+        (0, 0, 0, 0),
     )
 
-im = Image.alpha_composite(
-    im.convert("RGBA"),
-    overlay,
-)
+    od = ImageDraw.Draw(overlay)
+
+    # Zone sombre à gauche
+    dark_until = 1050
+
+    # Fin du fondu horizontal
+    fade_until = 2350
+
+    # Zone sombre en hauteur
+    full_height = 650
+
+    # Fin du fondu vertical
+    fade_height = 1050
+
+    # Intensité du noir
+    max_alpha = 205
+
+    for x2 in range(0, fade_until, 8):
+
+        if x2 <= dark_until:
+            horizontal = 1.0
+        else:
+            p = (x2 - dark_until) / (fade_until - dark_until)
+            p = max(0.0, min(1.0, p))
+            p = p * p * (3 - 2 * p)
+            horizontal = 1.0 - p
+
+        for y2 in range(0, fade_height, 8):
+
+            if y2 <= full_height:
+                vertical = 1.0
+            else:
+                p = (y2 - full_height) / (fade_height - full_height)
+                p = max(0.0, min(1.0, p))
+                p = p * p * (3 - 2 * p)
+                vertical = 1.0 - p
+
+            alpha = int(
+                max_alpha
+                * horizontal
+                * vertical
+            )
+
+            if alpha > 0:
+                od.rectangle(
+                    (
+                        x2,
+                        y2,
+                        x2 + 8,
+                        y2 + 8,
+                    ),
+                    fill=(0, 0, 0, alpha),
+                )
+
+    im = Image.alpha_composite(
+        im.convert("RGBA"),
+        overlay,
+    )
 
     draw = ImageDraw.Draw(im)
 
