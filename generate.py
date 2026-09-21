@@ -206,43 +206,60 @@ def make(item, kind, prov):
         )
     )
 
-    # ---------------------------------------------------------
-    # Dégradé supérieur gauche.
-    # La zone centrale reste libre pour les icônes Projectivy.
-    # ---------------------------------------------------------
 
-    overlay = Image.new(
-        "RGBA",
-        (W, H),
-        (0, 0, 0, 0),
+    # ---------------------------------------------------------
+# Dégradé horizontal derrière les informations.
+#
+# Gauche : sombre pour rendre le texte lisible.
+# Droite : totalement transparente pour retrouver
+#          progressivement la luminosité du backdrop.
+# ---------------------------------------------------------
+
+overlay = Image.new(
+    "RGBA",
+    (W, H),
+    (0, 0, 0, 0),
+)
+
+od = ImageDraw.Draw(overlay)
+
+# Jusqu'ici, le fond reste bien sombre.
+dark_until = 1050
+
+# À partir de cette position, le backdrop retrouve
+# complètement sa luminosité.
+fade_until = 2350
+
+# Opacité maximale à gauche.
+max_alpha = 205
+
+for x in range(0, fade_until, 8):
+
+    if x <= dark_until:
+        alpha = max_alpha
+
+    else:
+        progress = (
+            (x - dark_until)
+            / (fade_until - dark_until)
+        )
+
+        # Courbe douce plutôt qu'un dégradé linéaire.
+        progress = progress * progress * (3 - 2 * progress)
+
+        alpha = int(
+            max_alpha * (1 - progress)
+        )
+
+    od.rectangle(
+        (x, 0, x + 8, 900),
+        fill=(0, 0, 0, alpha),
     )
 
-    od = ImageDraw.Draw(overlay)
-
-    for x in range(0, 2300, 20):
-        alpha = int(
-            210 * max(0, 1 - x / 2300)
-        )
-
-        od.rectangle(
-            (x, 0, x + 20, 900),
-            fill=(0, 0, 0, alpha),
-        )
-
-    for y in range(0, 950, 20):
-        alpha = int(
-            80 * max(0, 1 - y / 950)
-        )
-
-        od.rectangle(
-            (0, y, 2200, y + 20),
-            fill=(0, 0, 0, alpha),
-        )
-
-    im = Image.alpha_composite(
-        im.convert("RGBA"),
-        overlay,
-    )
+im = Image.alpha_composite(
+    im.convert("RGBA"),
+    overlay,
+)
 
     draw = ImageDraw.Draw(im)
 
